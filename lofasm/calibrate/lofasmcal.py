@@ -65,7 +65,7 @@ class data_handler(object):
             if verbose == True:
                 p = (str(i*100/len(self.filelist)) + '%')
                 if i+1 not in range(len(self.filelist)):
-                    p = 'Done'
+                    p = 'Done \n'
                 sys.stdout.write("\r%s%s" % (re,p))
                 sys.stdout.flush()
 
@@ -77,7 +77,7 @@ class data_handler(object):
         self.filelist = sorted(glob.glob(files))
 
         for f in reversed(self.filelist): #Remove non lofasm files from filelist
-            if not bb.is_lofasm_file(f):
+            if not bb.is_lofasm_bbx(f):
                 self.filelist.remove(f)
 
         re = 'Reading data...'
@@ -105,7 +105,7 @@ class data_handler(object):
             f.close()
 
             # Compute datetime of the selected timebin
-            index = min_vals_per_timebin.index(min_file_val)
+            index = list(freqavg).index(min_file_val)
             seconds_into_file = (float(index)/timebins)*timelength
             seconds_into_file = datetime.timedelta(seconds=seconds_into_file)
             time_from_bin = time_obj + seconds_into_file
@@ -116,7 +116,7 @@ class data_handler(object):
             if verbose==True:
                 p = (str(i*100/len(self.filelist)) + '%')
                 if i+1 not in range(len(self.filelist)):
-                    p = 'Done'
+                    p = 'Done \n'
                 sys.stdout.write("\r%s%s" % (re,p))
                 sys.stdout.flush()
 
@@ -124,7 +124,7 @@ class data_handler(object):
 
         self.filelist = sorted(glob.glob(files))
         for f in reversed(self.filelist): #Remove non lofasm files from filelist
-            if not bb.is_lofasm_file(f):
+            if not bb.is_lofasm_bbx(f):
                 filelist.remove(f)
 
         for i in range(len(self.filelist)):
@@ -149,7 +149,7 @@ class galaxy(object):
                       3:{'name':'LIII', 'lat':[38,25,59.0], 'long':[79,50,23.0], 't_offset':5.322648148148148},
                       4:{'name':'LIV', 'lat':[34,12,3.0], 'long':[118,10,18.0], 't_offset':7.87811111111111}}
 
-    def galaxy_power_array(self, time_array, freq, station, verbose=True):
+    def galaxy_power_array(self, time_array, freq, station, h_cutoff=0, verbose=True):
 
         time_list = list(time_array) #Convert nparray to list - for %age
         lfs = self.lfdic[station]
@@ -157,7 +157,7 @@ class galaxy(object):
 
         LoFASM = gm.station(lfs['name'], lfs['lat'], lfs['long'],FOV_color='b',
                             frequency=freq,one_ring=False,
-                            rot_angle=self.rot_ang,pol_angle=self.pol_ang)
+                            rot_angle=self.rot_ang,pol_angle=self.pol_ang,h_cutoff=h_cutoff)
         FOV = LoFASM.lofasm.Omega()
         conversion = np.divide((np.power(np.divide(3.0*1.0e8,45.0e6),2)),(FOV))
 
@@ -192,8 +192,42 @@ class chunk(object):
         #     if not bb.is_lofasm_file(f):
         #         filelist.remove(f)
 
-class galaxymodel(object):
-    pass
+class calfile(object):
+    def __init__(self):
+        """Read & write calibration parameters to a file
+        """
+        self.path = ''
+        self.filelist = []
+        self.freq = 20.0
+        self.pars = [[],[]]
+
+    def is_there_calfile(self,path,year):
+        """Check whether there is already a parameters file
+        """
+        filename = os.path.join(path,str(year)+'_parameters.txt')
+
+        return os.path.isfile(filename)
+
+    def write_calfile(self, filelist, freq, pars, path=None):
+
+        dirpath = os.path.dirname(filelist[0])
+        fn1 = os.path.basename(filelist[0])
+        fn2 = os.path.basename(filelist[-1])
+        cfname = os.path.join(dirpath, fn1[:8]+'_parameters.txt')
+
+        today = str(datetime.datetime.now())
+
+        writelist = [[fn1, freq, pars[0], pars[1], today],
+                     [fn2, freq, pars[0], pars[1], today]]
+
+        #Add column names if creating new calibration file
+        meta = ['filename', 'MHz', 'p1', 'p2', 'timestamp']
+        if not self.is_there_calfile(dirpath,fn1[:4]):
+            writelist.insert(0,meta)
+
+        with open(cfname, 'a+') as output:
+            for row in writelist:
+                output.write(str(row)+'\n')
 
 class calibrate(object):
     """	Class that contains and calibrates lofasm data.	

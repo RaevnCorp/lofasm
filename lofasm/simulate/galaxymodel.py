@@ -14,7 +14,7 @@ import LoFASM_simulation_v3 as v3
 
 class station(object):
 
-    def __init__(self,name,lat,west_long,FOV_color=[0,0,0],FOV_radius=23,time=0, frequency=20.0, one_ring=False,rot_angle=0.0,pol_angle=8*np.pi/9.0):
+    def __init__(self,name,lat,west_long,FOV_color=[0,0,0],FOV_radius=23,time=0, frequency=20.0, one_ring=False,rot_angle=0.0,pol_angle=8*np.pi/9.0,h_cutoff=0):
 
         self.name        = name
         self.lat         = [np.float(x) for x in lat]
@@ -56,6 +56,8 @@ class station(object):
             self.lofasm = v3.LoFASM(441.0,rot_angle=rot_angle,pol_angle=pol_angle)
 
         self.lofasm.set_frequency(frequency)
+
+        self.horizon_cutoff = h_cutoff
 
     #~ def set_time(self,time):
 	#~ if not type(time) == datetime.datetime:
@@ -101,9 +103,11 @@ class station(object):
 
     def calculate_gnoise(self,utc=-1):
 
+        rad_above_horizon = np.deg2rad(self.horizon_cutoff)
+
         M = 30
         gasleg = np.polynomial.legendre.leggauss(M)
-        locs = np.where(gasleg[0] > 0)
+        locs = np.where(gasleg[0] > np.sin(rad_above_horizon))
         cos_theta = gasleg[0][locs]
 
         phi = np.arange(0,2*np.pi,2*np.pi/(2.0*M))
@@ -135,7 +139,7 @@ class station(object):
             if verbose==True:
                 p = (str((utc.index(hour))*100/len(utc)) + '%')
                 if utc.index(hour) == (len(utc)-1):
-                    p = "Done"
+                    p = "Done \n"
                 sys.stdout.write("\r%s%s" % (ge,p))
                 sys.stdout.flush()
 
