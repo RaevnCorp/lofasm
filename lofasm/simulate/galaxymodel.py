@@ -45,7 +45,8 @@ class station(object):
 
         self.aa = sidereal.AltAz(0,0)
         # Read Haslam 408 MHz skymap
-        self.hpmap = hp.read_map(os.path.join(os.path.dirname(__file__), "lambda_haslam408_dsds.fits.txt"), verbose=False)
+        # self.hpmap = hp.read_map(os.path.join(os.path.dirname(__file__), "lambda_haslam408_dsds.fits.txt"), verbose=False)
+        self.hpmap = hp.read_map(raw_input('Path to lambda_haslam skymap?'), verbose=False)
         self.Rotator = hp.Rotator(coord=['C','G'])
 
         if(one_ring=='inner'):
